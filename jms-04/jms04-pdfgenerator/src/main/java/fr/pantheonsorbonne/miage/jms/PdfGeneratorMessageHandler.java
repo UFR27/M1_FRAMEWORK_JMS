@@ -2,6 +2,7 @@ package fr.pantheonsorbonne.miage.jms;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.StringReader;
 
 import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
@@ -14,6 +15,8 @@ import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Queue;
 import javax.jms.Session;
+import javax.jms.TextMessage;
+import javax.xml.bind.JAXBContext;
 
 import fr.pantheonsorbonne.ufr27.miage.DiplomaInfo;
 
@@ -54,10 +57,20 @@ public class PdfGeneratorMessageHandler implements Closeable {
 
 	public void consume() {
 		
-		// receive a text message from the consummer
-		// create a jaxbcontext, binding the DiplomaInfo class
-		// unmarshall the texte message body with the JaxBcontext
-		// use the handleReceivedDiplomaSpect method to generate the diploma an send it through the wire
+		try {
+			// receive a text message from the consummer
+			TextMessage txtMessage = (TextMessage) diplomaRequestConsummer.receive();
+			// create a jaxbcontext, binding the DiplomaInfo class
+			JAXBContext jxbContext = JAXBContext.newInstance(DiplomaInfo.class);
+			// unmarshall the texte message body with the JaxBcontext
+			DiplomaInfo diplomaInfo = (DiplomaInfo) jxbContext.createUnmarshaller().unmarshal(new StringReader(txtMessage.getText()));
+			handledReceivedDiplomaSpect(diplomaInfo);
+			// use the handleReceivedDiplomaSpect method to generate the diploma an send it through the wire
+		}
+		catch(Exception e) {
+			System.out.println("Error consume");
+		}
+
 		
 	}
 
