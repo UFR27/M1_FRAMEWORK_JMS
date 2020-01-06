@@ -8,6 +8,7 @@ import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.jms.BytesMessage;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
@@ -18,6 +19,10 @@ import javax.jms.Session;
 import javax.jms.TextMessage;
 import javax.xml.bind.JAXBContext;
 
+import com.itextpdf.text.pdf.codec.Base64.InputStream;
+
+import fr.pantheonsorbonne.miage.diploma.DiplomaGenerator;
+import fr.pantheonsorbonne.miage.diploma.MiageDiplomaGenerator;
 import fr.pantheonsorbonne.ufr27.miage.DiplomaInfo;
 
 @ApplicationScoped
@@ -76,21 +81,30 @@ public class PdfGeneratorMessageHandler implements Closeable {
 
 	private void handledReceivedDiplomaSpect(DiplomaInfo diploma) {
 
-		// create a new MIageDiplomaGenerator Instance from the diploma Info
-		// get the content (inputstream ) from the generator
-		// create an array of bytes having the size of the inputstream
-		// read the inputstream data into the adday
-		// use the sendBinary sendBinaryDiploma function to send the diploma through the
-		// write
-		// close the IS
+		try {
+			DiplomaGenerator generator = new MiageDiplomaGenerator(diploma.getStudent());
+			InputStream is = (InputStream) generator.getContent();
+			byte[] data = new byte[is.available()];
+			is.read(data);
+			this.sendBinaryDiploma(diploma, data);
+			is.close();
+		} catch (IOException e) {
+			System.out.println("Error generate diploma");
+		}
 
 	}
 
 	public void sendBinaryDiploma(DiplomaInfo info, byte[] data) {
-		//	create a new byte message using the session object
-		// set an IntProperty on the message containing the id of the diploma
-		// write the bytes into the bytesmessage
-		// send the message through the producer
+		try {
+			BytesMessage message = this.session.createBytesMessage();
+			message.setIntProperty("id", info.getId());
+			message.writeBytes(data);
+
+			this.diplomaFileProducer.send(message);
+
+		} catch (JMSException e) {
+			System.out.println("Error send msg");
+		}
 
 	}
 
